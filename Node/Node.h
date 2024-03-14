@@ -5,22 +5,21 @@
 
 using namespace std;
 
-template<typename Id>
+template<typename Id, typename Value>
 class Edge;
 
-template<typename Id>
+template<typename Id, typename Value>
 struct Node {
     Id id_;
-    set<Edge<Id> *> children;
+    Value value_;
+    vector<Edge<Id, Value> *> edges_;
 
-    Node(Id id) {
-        id_ = id;
-    }
+    Node(const Id &id, Value value) : id_(id), value_(value) {}
 
     ~Node() {
-        while (!children.empty()) {
-            auto to_del = children.begin();
-            children.erase(to_del);
+        while (!edges_.empty()) {
+            auto to_del = edges_.begin();
+            edges_.erase(to_del);
             delete *to_del;
         }
     }

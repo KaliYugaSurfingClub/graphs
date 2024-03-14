@@ -1,55 +1,104 @@
 #include <iostream>
 #include <bits/stdc++.h>
+#include "Edge/Edge.h"
+#include "Node/Node.h"
 
 using namespace std;
 
-class User {
-public:
-    User(const string &name, int age) : name_(name), age_(age) {}
-    string name_;
-    int age_;
+struct Point {
+    Point(int x, int y) : x(x), y(y) {}
+
+    int x = 0;
+    int y = 0;
 };
 
-template<typename T>
-class Graph {
+
+class City {
 public:
-    void add(T *node1, T *node2) {
-        ad_list_[node1].push_back(node2);
-        ad_list_[node2].push_back(node1);
+    City(const string &name, int x, int y) : name_(name), point_(x, y) {}
+
+public:
+    string name_;
+    Point point_;
+};
+
+template<typename Id>
+bool find_path(map<Id, Node<Id> *> graph, Id start, Id end) {
+    static set<Id> visited;
+
+    if (start == end) {
+        return true;
     }
 
-    ~Graph() {
-        for (auto iter = ad_list_.cbegin(); iter != ad_list_.cend(); ++iter) {
-            delete iter->first;
+    visited.insert(start);
+
+    for (Edge<Id> *edge : graph.at(start)->children) {
+        Id next_vertex = edge->adjacent_node_->id_;
+        if (visited.find(next_vertex) == visited.end()) {
+            if (find_path(graph, next_vertex, end)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+const int INF = 1e9;
+
+template<typename Id>
+map<Id, int> bfs(map<Id, Node<Id> *> graph, Id start) {
+    queue<Id> next_vertexes;
+    map<Id, int> distances;
+    for (const auto &node : graph) {
+        distances[node.first] = INF;
+    }
+
+    distances[start] = 0;
+    next_vertexes.push(start);
+
+    while (!next_vertexes.empty()) {
+        Id curr_id = next_vertexes.front();
+        next_vertexes.pop();
+
+        for (Edge<Id> *edge : graph[curr_id]->children) {
+            Id next_id = edge->adjacent_node_->id_;
+            if (distances[next_id] == INF) {
+                next_vertexes.push(next_id);
+                distances[next_id] = distances[curr_id] + 1;
+            }
         }
     }
 
-private:
-    unordered_map<T*, list<T*>> ad_list_;
-};
+    return distances;
+}
 
 
 int main() {
-    const vector<User*> users_vec = {
-        new User("sasha", 0),
-        new User("sda", 1),
-        new User("ror", 2),
-        new User("asdfd", 3),
-        new User("svd", 4),
-        new User("sadf", 5),
-        new User("sadg", 6),
-        new User("sdfa", 7),
-    };
+    map<string, Node<string> *> graph;
 
-    Graph<User> graph;
-    vector<pair<int, int>> vec = {
-        {0, 4}, {4, 1}, {2, 1}, {5, 2},
-        {4, 5}, {4, 6}, {7, 5}, {6, 7}
-    };
+    for (size_t i = 0; i < 8; ++i) {
+        string dep, arrive;
+        int weight;
+        cin >> dep >> arrive >> weight;
 
-    for (const auto &pa : vec) {
-        graph.add(users_vec[pa.first], users_vec[pa.second]);
+        auto *node_arrive = (graph.find(arrive) != graph.end()) ? graph[arrive] : new Node<string>(arrive);
+        graph[arrive] = node_arrive;
+
+        auto *node_dep = (graph.find(dep) != graph.end()) ? graph[dep] : new Node<string>(dep);
+        graph[dep] = node_dep;
+
+        graph[dep]->children.insert(new Edge<string>(weight, node_arrive));
     }
+
+    for (auto iter1 = graph.begin(); iter1 != graph.end(); ++iter1) {
+        for (auto iter2 = iter1->second->children.begin(); iter2 != iter1->second->children.end(); ++iter2) {
+            cout << iter1->first << '-' << (*iter2)->adjacent_node_->id_ << endl;
+        }
+    }
+
+    cout << find_path(graph, string("AVTOZ"), string("m")) << endl;
+
+    auto distances = bfs(graph, string("AVTOZ"));
 
     return 0;
 }

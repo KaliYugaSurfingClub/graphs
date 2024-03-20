@@ -14,7 +14,7 @@ using namespace std;
 //    Value value_;
 //    vector<Edge<Id, Value, Len> *> edges_;
 //
-//    Node(const Id &id, Value value) : id_(id), value_(value) {}
+//    Node(const Id &id_, Value value) : id_(id_), value_(value) {}
 //
 //    ~Node() {
 //        while (!edges_.empty()) {

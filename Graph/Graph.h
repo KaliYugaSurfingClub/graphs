@@ -8,36 +8,30 @@
 using namespace std;
 
 //специализация для int
+//в bitsete сделать информацию о графе ореинтированный с циклами с отрицательными циклами
 template<typename Id, typename Value, typename Len = int>
 class Graph {
 public:
-    Graph() = default;
-    Graph(const Graph &graph) {
-        cout << 1;
-    }
-
     struct Edge {
-        Edge(Id adjacent_node, Len weight) : adjacent_node_(adjacent_node), weight_(weight) {}
-
+        explicit Edge(const Id &adjacent_node, Len weight = 0);
         Len weight_;
         Id adjacent_node_;
     };
 
     struct Node {
+        explicit Node(const Id &id);
+        Node(const Id &id, Value value);
+        Node(const Node &other);
+        Node(Node &&other) noexcept;
+
+        Node &operator=(const Node &other);
+        Node &operator=(Node &&other) noexcept;
+
         Id id_;
         Value value_;
         vector<Edge *> edges_;
 
-        Node(const Id &id, Value value) : id_(id), value_(value) {}
-
-        ~Node() {
-            while (!edges_.empty()) {
-                auto to_del = edges_.begin();
-                Edge *ptr_t_del = *to_del;
-                edges_.erase(to_del);
-                delete ptr_t_del;
-            }
-        }
+        ~Node();
     };
 
     struct Dijkstra_node {
@@ -63,35 +57,133 @@ public:
         bool exists_;
     };
 
-public:
+    Graph() {
+        cout << "create graph " << this << endl;
+    }
+    Graph(const Graph &other);
+    Graph(Graph &&other) noexcept;
+
+    Graph &operator=(const Graph &other);
+    Graph &operator=(Graph &&other) noexcept;
+
     bool vertex_exists(const Id &id);
 
-    Graph<Id, Value, Len> &add_vertex(const Id &id, Value value_ptr);
-    Graph<Id, Value, Len> &add_edge(const Id &departure, const Id &arrive, Len weight);
+    Graph &add_vertex(const Id &id, Value value_ptr);
+    Graph &add_edge(const Id &departure, const Id &arrive, Len weight);
 
     bool path_exists(const Id &start, const Id &end);
 
     map<Id, Dijkstra_node> get_dijkstra_graph(const Id &start);
     Shortest_path get_shortest_path(const Id &start, const Id &end);
 
-    Node *operator[](const Id &id) {
-        return adjacency_list_.at(id);
-    }
+    Node &operator[](const Id &id);
 
     ~Graph();
 
 private:
     map<Id, Node *> adjacency_list_;
     static const int INF = 1e9;
+
+    void clear_list() {
+
+    }
 };
 
 template<typename Id, typename Value, typename Len>
+Graph<Id, Value, Len> &Graph<Id, Value, Len>::operator=(const Graph &other) {
+    cout << "move = graph " << this << "<-" << &other << endl;
+    *this = std::move(Graph(other));
+    return *this;
+}
+
+template<typename Id, typename Value, typename Len>
+Graph<Id, Value, Len> &Graph<Id, Value, Len>::operator=(Graph &&other) noexcept {
+    for (auto &vertex : adjacency_list_) {
+        delete vertex.second;
+    }
+    adjacency_list_ = std::move(other.adjacency_list_);
+    return *this;
+}
+
+template<typename Id, typename Value, typename Len>
+Graph<Id, Value, Len>::Graph(Graph &&other) noexcept {
+    cout << "move constract graph" << this << endl;
+    adjacency_list_ = std::move(other.adjacency_list_);
+    other.adjacency_list_.clear();
+}
+
+template<typename Id, typename Value, typename Len>
+typename Graph<Id, Value, Len>::Node &Graph<Id, Value, Len>::Node::operator=(Graph::Node &&other) noexcept {
+    id_ = other.id_;
+    value_ = other.value_;
+    edges_ = std::move(edges_);
+    return *this;
+}
+
+template<typename Id, typename Value, typename Len>
+Graph<Id, Value, Len>::Node::Node(Graph::Node &&other) noexcept : id_(other.id_), value_(other.value_) {
+    edges_ = std::move(other.edges_);
+}
+
+template<typename Id, typename Value, typename Len>
+typename Graph<Id, Value, Len>::Node &Graph<Id, Value, Len>::operator[](const Id &id) {
+    return *adjacency_list_.at(id);
+}
+
+template<typename Id, typename Value, typename Len>
+Graph<Id, Value, Len>::Edge::Edge(const Id &adjacent_node, Len weight) : adjacent_node_(adjacent_node), weight_(weight) {}
+
+
+template<typename Id, typename Value, typename Len>
+typename Graph<Id, Value, Len>::Node &Graph<Id, Value, Len>::Node::operator=(const Graph::Node &other) {
+    *this = std::move(Graph::Node(other));
+    return *this;
+}
+
+template<typename Id, typename Value, typename Len>
+Graph<Id, Value, Len>::Node::Node(const Graph::Node &other) : id_(other.id_), value_(other.value_) {
+    for (const auto &edge : other.edges_) {
+        edges_.push_back(new Edge(*edge));
+    }
+}
+
+template<typename Id, typename Value, typename Len>
+Graph<Id, Value, Len>::Node::Node(const Id &id, Value value) : id_(id), value_(value) {}
+
+template<typename Id, typename Value, typename Len>
+Graph<Id, Value, Len>::Node::Node(const Id &id) {
+    if (is_same<Id, Value>::value) {
+        id_ = id;
+        value_ = id;
+    } else {
+        throw runtime_error("Id does not equal Types");
+    }
+}
+
+template<typename Id, typename Value, typename Len>
+Graph<Id, Value, Len>::Node::~Node() {
+    cout << "delete vertex " << this << endl;
+    while (!edges_.empty()) {
+        auto to_del = edges_.begin();
+        Edge *ptr_t_del = *to_del;
+        edges_.erase(to_del);
+        delete ptr_t_del;
+    }
+}
+
+template<typename Id, typename Value, typename Len>
+Graph<Id, Value, Len>::Graph(const Graph &other) {
+    cout << "copy constract graph " << this << endl;
+    for (const auto &item : other.adjacency_list_) {
+        adjacency_list_[item.first] = new Node(*item.second);
+    }
+}
+
+template<typename Id, typename Value, typename Len>
 Graph<Id, Value, Len>::~Graph() {
-    while (!adjacency_list_.empty()) {
-        auto node_to_del = adjacency_list_.begin();
-        Node *node_ptr_to_del = node_to_del->second;
-        adjacency_list_.erase(node_to_del->first);
-        delete node_ptr_to_del;
+    cout << "delete graph " << this << endl;
+    for (auto &vertex : adjacency_list_) {
+        delete vertex.second;
     }
 }
 
@@ -181,7 +273,6 @@ Graph<Id, Value, Len>::get_shortest_path(const Id &start, const Id &end) {
 template<typename Id, typename Value, typename Len>
 map<Id, typename Graph<Id, Value, Len>::Dijkstra_node>
 Graph<Id, Value, Len>::get_dijkstra_graph(const Id &start) {
-    //todo не уверен на счет node
     priority_queue<Dijkstra_node> next_vertexes;
     map<Id, Dijkstra_node> distances;
     for (auto i: adjacency_list_) {
@@ -212,7 +303,7 @@ Graph<Id, Value, Len>::get_dijkstra_graph(const Id &start) {
         }
     }
 
-    return std::move(distances);
+    return distances;
 }
 
 #endif //GRAPHS_GRAPH_H
